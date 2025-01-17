@@ -143,7 +143,7 @@ sns.countplot(df, x="Label")
 plt.show();
 
 
-
+file:///C:/Users/Krishi/Pictures/Screenshots/sta1.PNG
 
 
 
