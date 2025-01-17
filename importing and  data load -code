@@ -1,0 +1,137 @@
+SOCIAL MEDIA SENTIMENT ANALYSIS
+ Analyze social media data (e.g., Twitter) to understand public sentiment
+ towards specific topics, products, or events. Use natural language
+ processing (NLP) techniques to preprocess text data, extract sentiment
+ scores, and visualize sentiment trends over time
+
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+import string
+import re
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, accuracy_score
+from xgboost import XGBClassifier
+from lightgbm import LGBMClassifier
+  /* /usr/local/lib/python3.11/dist-packages/dask/dataframe/__init__.py:42: FutureWarning: 
+Dask dataframe query planning is disabled because dask-expr is not installed.
+
+You can install it with `pip install dask[dataframe]` or `conda install dask`.
+This will raise in a future version.
+
+  warnings.warn(msg, FutureWarning)*/
+
+ import nltk
+from nltk.stem import PorterStemmer, WordNetLemmatizer
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+from gensim.models import Word2Vec
+from nltk.corpus import wordnet
+
+
+nltk.download('stopwords')
+nltk.download('wordnet')
+nltk.download('punkt') 
+
+/*[nltk_data] Downloading package stopwords to /root/nltk_data...
+[nltk_data]   Unzipping corpora/stopwords.zip.
+[nltk_data] Downloading package wordnet to /root/nltk_data...
+[nltk_data] Downloading package punkt to /root/nltk_data...
+[nltk_data]   Unzipping tokenizers/punkt.zip.
+
+True*/
+!unzip /usr/share/nltk_data/corpora/wordnet.zip -d /usr/share/nltk_data/corpora/
+
+/* 
+
+Archive:  /usr/share/nltk_data/corpora/wordnet.zip
+replace /usr/share/nltk_data/corpora/wordnet/lexnames? [y]es, [n]o, [A]ll, [N]one, [r]ename: ^C
+
+*/    
+
+
+
+
+
+cols = ['id','account','Label','Text']
+
+df = pd.read_csv("/content/twitter_training.csv.zip", names=cols)
+
+cols = ['id','account','Label','Text']
+
+df = pd.read_csv("/content/twitter_training.csv.zip", names=cols)
+
+df.head()
+
+
+ 	id 	account 	Label 	Text
+0 	2401 	Borderlands 	Positive 	im getting on borderlands and i will murder yo...
+1 	2401 	Borderlands 	Positive 	I am coming to the borders and I will kill you...
+2 	2401 	Borderlands 	Positive 	im getting on borderlands and i will kill you ...
+3 	2401 	Borderlands 	Positive 	im coming on borderlands and i will murder you...
+4 	2401 	Borderlands 	Positive 	im getting on borderlands 2 and i will murder ...
+
+
+
+df.iloc[0]['Text']
+
+
+/*im getting on borderlands and i will murder you all ,*/
+
+
+Let's remove those tweets where we do not have a text at all:
+
+
+df[df['Text'].isna()]
+
+
+id 	account 	Label 	Text
+61 	2411 	Borderlands 	Neutral 	NaN
+553 	2496 	Borderlands 	Neutral 	NaN
+589 	2503 	Borderlands 	Neutral 	NaN
+745 	2532 	Borderlands 	Positive 	NaN
+1105 	2595 	Borderlands 	Positive 	NaN
+... 	... 	... 	... 	...
+73972 	9073 	Nvidia 	Positive 	NaN
+73973 	9073 	Nvidia 	Positive 	NaN
+74421 	9154 	Nvidia 	Positive 	NaN
+74422 	9154 	Nvidia 	Positive 	NaN
+74423 	9154 	Nvidia 	Positive 	NaN
+
+686 rows × 4 columns
+
+df.dropna(axis=0, subset=['Text'],inplace=True)
+df.info()
+
+
+<class 'pandas.core.frame.DataFrame'>
+Index: 73996 entries, 0 to 74681
+Data columns (total 4 columns):
+ #   Column   Non-Null Count  Dtype 
+---  ------   --------------  ----- 
+ 0   id       73996 non-null  int64 
+ 1   account  73996 non-null  object
+ 2   Label    73996 non-null  object
+ 3   Text     73996 non-null  object
+dtypes: int64(1), object(3)
+memory usage: 2.8+ MB
+
+
+
+
+
+
+
+
+
+
+
+
