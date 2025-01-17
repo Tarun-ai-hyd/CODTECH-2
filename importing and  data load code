@@ -143,7 +143,13 @@ sns.countplot(df, x="Label")
 plt.show();
 
 
-
+plt.figure(figsize=(10, 6))
+sns.histplot(df['Text'].apply(len), bins=30, kde=True, color='skyblue', edgecolor='black')
+plt.title('Distribution of Tweet Lengths', fontsize=16)
+plt.xlabel('Tweet Length', fontsize=14)
+plt.ylabel('Frequency', fontsize=14)
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+plt.show()
 
 
 
