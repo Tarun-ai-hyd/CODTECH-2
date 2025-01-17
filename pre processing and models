@@ -1,0 +1,660 @@
+stop_words = set(stopwords.words('english'))
+
+stemmer = PorterStemmer()
+lemmatizer = WordNetLemmatizer()
+# def preprocess_text(text):
+#     """
+#     This function receives the text of the tweet. 
+#     First, it turns all characters into lowercase. 
+#     Next, remove mentions "@user".
+#     Then it removes hastag text but keeps the word from a hastag as it can be relevant
+#     After that it removes URLs. Next remove punctuatuion.
+#     Last steps are tokenize the text, lemattize and remove stopwords.
+#     Returns:
+#         List of tokens (preprocessed words).
+#     """
+#     text = text.lower()
+#     text = re.sub(r'@\w+', '', text)
+#     text = re.sub(r'#', '', text)
+#     text = re.sub(r'http\S+|www\S+', '', text)
+#     text = re.sub(r'[^A-Za-z0-9 ]+', ' ', text)
+#     #text = text.translate(str.maketrans('', '', string.punctuation))
+#     tokens = word_tokenize(text)
+#     #tokens = [lemmatizer.lemmatize(word) for word in tokens]
+#     tokens = [stemmer.stem(word) for word in tokens]
+#     tokens = [str(word) for word in tokens if word not in stop_words]
+#     tokens = ' '.join([token for token in tokens])
+#     return tokens
+
+
+def preprocess_text(text):
+    """
+    This function receives the text of the tweet. 
+    First, it turns all characters into lowercase. 
+    Next, remove mentions "@user".
+    Then it removes hastag text but keeps the word from a hastag as it can be relevant
+    After that it removes URLs. Next remove punctuatuion.
+    Last steps are tokenize the text, lemattize and remove stopwords.
+    Returns:
+        List of tokens (preprocessed words).
+    """
+    text = text.lower()
+    text = re.sub(r'[^A-Za-z0-9 ]+', ' ', text)
+    tokens = word_tokenize(text)
+    tokens = [stemmer.stem(word) for word in tokens if word not in stop_words]
+    #tokens = ' '.join([token for token in tokens])
+    return tokens
+df['Text']
+Text
+0 	im getting on borderlands and i will murder yo...
+1 	I am coming to the borders and I will kill you...
+2 	im getting on borderlands and i will kill you ...
+3 	im coming on borderlands and i will murder you...
+4 	im getting on borderlands 2 and i will murder ...
+... 	...
+74677 	Just realized that the Windows partition of my...
+74678 	Just realized that my Mac window partition is ...
+74679 	Just realized the windows partition of my Mac ...
+74680 	Just realized between the windows partition of...
+74681 	Just like the windows partition of my Mac is l...
+
+73996 rows × 1 columns
+
+dtype: object
+
+
+label_encoder = LabelEncoder()
+df['Encoded_Label'] = label_encoder.fit_transform(df['Label']) 
+print("Encoded Labels Mapping:", dict(zip(label_encoder.classes_, range(len(label_encoder.classes_)))))
+
+
+
+Encoded Labels Mapping: {'Irrelevant': 0, 'Negative': 1, 'Neutral': 2, 'Positive': 3}
+
+Bag of Words representation
+
+models = [
+    ('Logistic Regression', LogisticRegression(max_iter=1000)),
+    ('Random Forest', RandomForestClassifier(n_estimators=100, random_state=42)),
+    ('XGBoost', XGBClassifier(
+        max_depth=6, 
+        n_estimators=100, 
+        learning_rate=0.1, 
+        verbosity=0,  # Suppress verbose messages in XGBoost
+        scale_pos_weight=1  # You can also include scale_pos_weight for imbalanced classes if needed
+    )),
+    ('LightGBM', LGBMClassifier(
+        max_depth=6, 
+        n_estimators=100, 
+        learning_rate=0.1, 
+        objective='multiclass', 
+        num_class=4,
+        verbose=-1,  # Suppress output messages in LightGBM
+        class_weight='balanced'  # Handle class imbalance in LightGBM
+    ))
+]
+
+bow_vect = CountVectorizer(analyzer=lambda x: x)
+
+X_train_bow = bow_vect.fit_transform(X_train)
+X_val_bow = bow_vect.transform(X_val)
+
+X_train_bow = X_train_bow.astype(np.float32)
+X_val_bow = X_val_bow.astype(np.float32)
+
+reports = train_and_evaluate(models, X_train_bow, y_train, X_val_bow, y_val)
+
+Training and evaluating: Logistic Regression
+
+/usr/local/lib/python3.11/dist-packages/sklearn/linear_model/_logistic.py:465: ConvergenceWarning: lbfgs failed to converge (status=1):
+STOP: TOTAL NO. of ITERATIONS REACHED LIMIT.
+
+Increase the number of iterations (max_iter) or scale the data as shown in:
+    https://scikit-learn.org/stable/modules/preprocessing.html
+Please also refer to the documentation for alternative solver options:
+    https://scikit-learn.org/stable/modules/linear_model.html#logistic-regression
+  n_iter_i = _check_optimize_result(
+
+Classification Report for Logistic Regression:
+
+              precision    recall  f1-score   support
+
+           0       0.44      0.08      0.14      2696
+           1       0.44      0.57      0.49      4380
+           2       0.53      0.38      0.45      3605
+           3       0.39      0.56      0.46      4119
+
+    accuracy                           0.43     14800
+   macro avg       0.45      0.40      0.38     14800
+weighted avg       0.45      0.43      0.41     14800
+
+Training and evaluating: Random Forest
+Classification Report for Random Forest:
+
+              precision    recall  f1-score   support
+
+           0       0.97      0.73      0.83      2696
+           1       0.83      0.91      0.87      4380
+           2       0.88      0.84      0.86      3605
+           3       0.82      0.90      0.86      4119
+
+    accuracy                           0.86     14800
+   macro avg       0.88      0.85      0.86     14800
+weighted avg       0.86      0.86      0.86     14800
+
+Training and evaluating: XGBoost
+Classification Report for XGBoost:
+
+              precision    recall  f1-score   support
+
+           0       0.74      0.18      0.29      2696
+           1       0.52      0.66      0.58      4380
+           2       0.66      0.48      0.56      3605
+           3       0.47      0.69      0.56      4119
+
+    accuracy                           0.54     14800
+   macro avg       0.60      0.50      0.50     14800
+weighted avg       0.58      0.54      0.52     14800
+
+Training and evaluating: LightGBM
+
+/usr/local/lib/python3.11/dist-packages/sklearn/utils/deprecation.py:151: FutureWarning: 'force_all_finite' was renamed to 'ensure_all_finite' in 1.6 and will be removed in 1.8.
+  warnings.warn(
+/usr/local/lib/python3.11/dist-packages/sklearn/utils/deprecation.py:151: FutureWarning: 'force_all_finite' was renamed to 'ensure_all_finite' in 1.6 and will be removed in 1.8.
+  warnings.warn(
+
+Classification Report for LightGBM:
+
+              precision    recall  f1-score   support
+
+           0       0.43      0.51      0.47      2696
+           1       0.60      0.53      0.56      4380
+           2       0.64      0.49      0.56      3605
+           3       0.49      0.60      0.54      4119
+
+    accuracy                           0.53     14800
+   macro avg       0.54      0.53      0.53     14800
+weighted avg       0.55      0.53      0.54     14800
+
+Logistic Regression model:
+
+# lr_bow = LogisticRegression(max_iter=500)
+
+# lr_bow.fit(X_train_bow, y_train)
+# y_pred_bow_lr = lr_bow.predict(X_val_bow)
+
+Random Forest model:
+
+# rf_bow = RandomForestClassifier(n_estimators=100, random_state=42)
+# rf_bow.fit(X_train_bow, y_train)
+# y_pred_bow_rf = rf_bow.predict(X_val_bow)
+
+Word2Vec representation
+
+X_train
+
+w2v_model = Word2Vec(sentences=X_train, vector_size=300, window=5, min_count=1, workers=4)
+
+WARNING:gensim.models.word2vec:Each 'sentences' item should be a list of words (usually unicode strings). First item here is instead plain <class 'str'>.
+
+def get_average_w2v_vectors(tokens_list, model):
+    """
+    Computes the average Word2Vec vector for a list of tokenized sentences.
+
+    Args:
+        tokens_list: List of tokenized sentences.
+        model: Trained Word2Vec model.
+
+    Returns:
+        Numpy array of average vectors (one per sentence).
+    """
+    # Average vectors for all sentences
+    vectors = np.array([
+        np.mean([model.wv[token] for token in tokens if token in model.wv] or [np.zeros(model.vector_size)], axis=0)
+        for tokens in tokens_list
+    ])
+    return vectors
+
+X_train_w2v = get_average_w2v_vectors(X_train, w2v_model)
+X_val_w2v = get_average_w2v_vectors(X_val, w2v_model)
+
+from sklearn.preprocessing import StandardScaler
+
+scaler = StandardScaler()
+X_train_w2v = scaler.fit_transform(X_train_w2v)
+X_val_w2v = scaler.transform(X_val_w2v)
+
+reports = train_and_evaluate(models, X_train_w2v, y_train, X_val_w2v, y_val)
+
+Training and evaluating: Logistic Regression
+
+/usr/local/lib/python3.11/dist-packages/sklearn/linear_model/_logistic.py:465: ConvergenceWarning: lbfgs failed to converge (status=1):
+STOP: TOTAL NO. of ITERATIONS REACHED LIMIT.
+
+Increase the number of iterations (max_iter) or scale the data as shown in:
+    https://scikit-learn.org/stable/modules/preprocessing.html
+Please also refer to the documentation for alternative solver options:
+    https://scikit-learn.org/stable/modules/linear_model.html#logistic-regression
+  n_iter_i = _check_optimize_result(
+
+Classification Report for Logistic Regression:
+
+              precision    recall  f1-score   support
+
+           0       0.37      0.03      0.05      2696
+           1       0.40      0.66      0.50      4380
+           2       0.50      0.42      0.45      3605
+           3       0.39      0.42      0.41      4119
+
+    accuracy                           0.42     14800
+   macro avg       0.42      0.38      0.35     14800
+weighted avg       0.42      0.42      0.38     14800
+
+Training and evaluating: Random Forest
+Classification Report for Random Forest:
+
+              precision    recall  f1-score   support
+
+           0       0.89      0.44      0.59      2696
+           1       0.65      0.82      0.73      4380
+           2       0.72      0.67      0.70      3605
+           3       0.68      0.76      0.72      4119
+
+    accuracy                           0.70     14800
+   macro avg       0.73      0.67      0.68     14800
+weighted avg       0.72      0.70      0.69     14800
+
+Training and evaluating: XGBoost
+Classification Report for XGBoost:
+
+              precision    recall  f1-score   support
+
+           0       0.66      0.20      0.31      2696
+           1       0.52      0.69      0.59      4380
+           2       0.56      0.52      0.54      3605
+           3       0.51      0.59      0.55      4119
+
+    accuracy                           0.53     14800
+   macro avg       0.56      0.50      0.50     14800
+weighted avg       0.55      0.53      0.52     14800
+
+Training and evaluating: LightGBM
+
+/usr/local/lib/python3.11/dist-packages/sklearn/utils/deprecation.py:151: FutureWarning: 'force_all_finite' was renamed to 'ensure_all_finite' in 1.6 and will be removed in 1.8.
+  warnings.warn(
+/usr/local/lib/python3.11/dist-packages/sklearn/utils/deprecation.py:151: FutureWarning: 'force_all_finite' was renamed to 'ensure_all_finite' in 1.6 and will be removed in 1.8.
+  warnings.warn(
+
+Classification Report for LightGBM:
+
+              precision    recall  f1-score   support
+
+           0       0.43      0.47      0.45      2696
+           1       0.57      0.58      0.58      4380
+           2       0.54      0.52      0.53      3605
+           3       0.54      0.51      0.52      4119
+
+    accuracy                           0.53     14800
+   macro avg       0.52      0.52      0.52     14800
+weighted avg       0.53      0.53      0.53     14800
+
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout
+from tensorflow.keras.optimizers import Adam
+
+input_dim = X_train_w2v.shape[1]  # Number of features in averaged Word2Vec vectors
+num_classes = len(y_train.unique())  # Number of classes
+
+model = Sequential([
+    Dense(256, activation='relu', input_dim=input_dim),
+    Dropout(0.2),
+    Dense(128, activation='relu'),
+    Dropout(0.2),
+    Dense(64, activation='relu'),
+    Dropout(0.2),
+    Dense(32, activation='relu'),
+    Dropout(0.2),
+    Dense(num_classes, activation='softmax') 
+])
+
+optimizer = Adam(learning_rate=0.0001)
+model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+model.summary()
+
+# Add a timestep dimension: Each sample has 1 timestep of 300 features
+X_train_w2v = X_train_w2v.reshape(X_train_w2v.shape[0], 1, X_train_w2v.shape[1])
+X_val_w2v = X_val_w2v.reshape(X_val_w2v.shape[0], 1, X_val_w2v.shape[1])
+
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import LSTM, Dense, Dropout, Bidirectional, BatchNormalization
+from tensorflow.keras.optimizers import Adam
+
+
+# Define timesteps and features
+timesteps = 1  # Single timestep
+features = X_train_w2v.shape[2]  # This will be 300
+
+model = Sequential([
+    Bidirectional(LSTM(128, return_sequences=True), input_shape=(timesteps, features)),
+    Dropout(0.3),
+    BatchNormalization(),
+
+    Bidirectional(LSTM(128, return_sequences=True)),
+    Dropout(0.3),
+    BatchNormalization(),
+
+    Bidirectional(LSTM(64, return_sequences=False)),
+    Dropout(0.3),
+
+    Dense(128, activation='relu'),
+    Dropout(0.4),
+    Dense(num_classes, activation='softmax')
+])
+
+model.compile(
+    optimizer=Adam(learning_rate=0.0005),
+    loss='sparse_categorical_crossentropy',
+    metrics=['accuracy']
+)
+
+model.summary()
+
+print(f"X_train_w2v shape: {X_train_w2v.shape}, y_train shape: {y_train.shape}")
+print(f"X_val_w2v shape: {X_val_w2v.shape}, y_val shape: {y_val.shape}")
+
+X_train_w2v shape: (59196, 1, 300), y_train shape: (59196,)
+X_val_w2v shape: (14800, 1, 300), y_val shape: (14800,)
+
+Epoch 1/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 70s 31ms/step - accuracy: 0.3854 - loss: 1.3192 - val_accuracy: 0.4389 - val_loss: 1.2504
+Epoch 2/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 80s 30ms/step - accuracy: 0.4281 - loss: 1.2661 - val_accuracy: 0.4435 - val_loss: 1.2322
+Epoch 3/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 82s 30ms/step - accuracy: 0.4514 - loss: 1.2347 - val_accuracy: 0.4634 - val_loss: 1.2072
+Epoch 4/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 82s 30ms/step - accuracy: 0.4587 - loss: 1.2193 - val_accuracy: 0.4653 - val_loss: 1.2017
+Epoch 5/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 62s 33ms/step - accuracy: 0.4701 - loss: 1.1999 - val_accuracy: 0.4765 - val_loss: 1.1799
+Epoch 6/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 55s 30ms/step - accuracy: 0.4767 - loss: 1.1862 - val_accuracy: 0.4822 - val_loss: 1.1724
+Epoch 7/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 82s 30ms/step - accuracy: 0.4844 - loss: 1.1703 - val_accuracy: 0.4822 - val_loss: 1.1665
+Epoch 8/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 54s 29ms/step - accuracy: 0.4929 - loss: 1.1563 - val_accuracy: 0.4889 - val_loss: 1.1475
+Epoch 9/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 85s 31ms/step - accuracy: 0.4990 - loss: 1.1423 - val_accuracy: 0.4941 - val_loss: 1.1353
+Epoch 10/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 79s 30ms/step - accuracy: 0.5046 - loss: 1.1288 - val_accuracy: 0.5101 - val_loss: 1.1242
+Epoch 11/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 55s 30ms/step - accuracy: 0.5137 - loss: 1.1167 - val_accuracy: 0.5199 - val_loss: 1.1113
+Epoch 12/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 80s 29ms/step - accuracy: 0.5182 - loss: 1.1050 - val_accuracy: 0.5210 - val_loss: 1.1019
+Epoch 13/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 88s 33ms/step - accuracy: 0.5263 - loss: 1.0962 - val_accuracy: 0.5291 - val_loss: 1.0874
+Epoch 14/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 61s 33ms/step - accuracy: 0.5317 - loss: 1.0908 - val_accuracy: 0.5343 - val_loss: 1.0774
+Epoch 15/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 67s 36ms/step - accuracy: 0.5424 - loss: 1.0669 - val_accuracy: 0.5409 - val_loss: 1.0729
+Epoch 16/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 70s 30ms/step - accuracy: 0.5429 - loss: 1.0648 - val_accuracy: 0.5448 - val_loss: 1.0624
+Epoch 17/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 82s 30ms/step - accuracy: 0.5468 - loss: 1.0533 - val_accuracy: 0.5477 - val_loss: 1.0526
+Epoch 18/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 83s 31ms/step - accuracy: 0.5518 - loss: 1.0418 - val_accuracy: 0.5495 - val_loss: 1.0434
+Epoch 19/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 81s 30ms/step - accuracy: 0.5595 - loss: 1.0277 - val_accuracy: 0.5561 - val_loss: 1.0381
+Epoch 20/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 56s 30ms/step - accuracy: 0.5676 - loss: 1.0177 - val_accuracy: 0.5573 - val_loss: 1.0306
+Epoch 21/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 83s 31ms/step - accuracy: 0.5642 - loss: 1.0215 - val_accuracy: 0.5589 - val_loss: 1.0273
+Epoch 22/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 80s 30ms/step - accuracy: 0.5734 - loss: 1.0038 - val_accuracy: 0.5657 - val_loss: 1.0256
+Epoch 23/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 84s 31ms/step - accuracy: 0.5740 - loss: 1.0042 - val_accuracy: 0.5716 - val_loss: 1.0065
+Epoch 24/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 59s 32ms/step - accuracy: 0.5815 - loss: 0.9904 - val_accuracy: 0.5768 - val_loss: 0.9999
+Epoch 25/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 81s 31ms/step - accuracy: 0.5858 - loss: 0.9820 - val_accuracy: 0.5793 - val_loss: 0.9938
+Epoch 26/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 81s 31ms/step - accuracy: 0.5839 - loss: 0.9838 - val_accuracy: 0.5859 - val_loss: 0.9855
+Epoch 27/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 83s 32ms/step - accuracy: 0.5879 - loss: 0.9742 - val_accuracy: 0.5844 - val_loss: 0.9883
+Epoch 28/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 83s 32ms/step - accuracy: 0.5897 - loss: 0.9698 - val_accuracy: 0.5864 - val_loss: 0.9853
+Epoch 29/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 81s 32ms/step - accuracy: 0.5947 - loss: 0.9630 - val_accuracy: 0.5868 - val_loss: 0.9782
+Epoch 30/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 85s 34ms/step - accuracy: 0.6044 - loss: 0.9467 - val_accuracy: 0.5876 - val_loss: 0.9779
+Epoch 31/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 83s 34ms/step - accuracy: 0.6038 - loss: 0.9465 - val_accuracy: 0.5964 - val_loss: 0.9636
+Epoch 32/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 78s 32ms/step - accuracy: 0.6060 - loss: 0.9415 - val_accuracy: 0.5972 - val_loss: 0.9605
+Epoch 33/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 81s 32ms/step - accuracy: 0.6110 - loss: 0.9321 - val_accuracy: 0.6034 - val_loss: 0.9569
+Epoch 34/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 81s 31ms/step - accuracy: 0.6084 - loss: 0.9305 - val_accuracy: 0.6059 - val_loss: 0.9553
+Epoch 35/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 60s 32ms/step - accuracy: 0.6123 - loss: 0.9300 - val_accuracy: 0.6058 - val_loss: 0.9468
+Epoch 36/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 87s 35ms/step - accuracy: 0.6206 - loss: 0.9184 - val_accuracy: 0.6143 - val_loss: 0.9363
+Epoch 37/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 77s 32ms/step - accuracy: 0.6177 - loss: 0.9188 - val_accuracy: 0.6128 - val_loss: 0.9367
+Epoch 38/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 79s 31ms/step - accuracy: 0.6224 - loss: 0.9075 - val_accuracy: 0.6132 - val_loss: 0.9335
+Epoch 39/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 84s 32ms/step - accuracy: 0.6280 - loss: 0.9011 - val_accuracy: 0.6189 - val_loss: 0.9260
+Epoch 40/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 80s 31ms/step - accuracy: 0.6275 - loss: 0.8978 - val_accuracy: 0.6206 - val_loss: 0.9241
+Epoch 41/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 102s 41ms/step - accuracy: 0.6309 - loss: 0.8901 - val_accuracy: 0.6166 - val_loss: 0.9277
+Epoch 42/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 69s 34ms/step - accuracy: 0.6315 - loss: 0.8868 - val_accuracy: 0.6230 - val_loss: 0.9225
+Epoch 43/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 80s 33ms/step - accuracy: 0.6329 - loss: 0.8884 - val_accuracy: 0.6229 - val_loss: 0.9164
+Epoch 44/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 78s 31ms/step - accuracy: 0.6349 - loss: 0.8837 - val_accuracy: 0.6241 - val_loss: 0.9142
+Epoch 45/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 59s 32ms/step - accuracy: 0.6353 - loss: 0.8769 - val_accuracy: 0.6274 - val_loss: 0.9110
+Epoch 46/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 81s 31ms/step - accuracy: 0.6359 - loss: 0.8782 - val_accuracy: 0.6313 - val_loss: 0.9047
+Epoch 47/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 84s 32ms/step - accuracy: 0.6421 - loss: 0.8706 - val_accuracy: 0.6346 - val_loss: 0.9054
+Epoch 48/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 58s 31ms/step - accuracy: 0.6380 - loss: 0.8763 - val_accuracy: 0.6330 - val_loss: 0.9045
+Epoch 49/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 82s 31ms/step - accuracy: 0.6439 - loss: 0.8663 - val_accuracy: 0.6376 - val_loss: 0.8903
+Epoch 50/50
+1850/1850 ━━━━━━━━━━━━━━━━━━━━ 59s 32ms/step - accuracy: 0.6445 - loss: 0.8683 - val_accuracy: 0.6356 - val_loss: 0.8942
+Train accuracy: 0.7725, Validation accuracy: 0.6376
+
+print(f"Training Accuracy: {train_acc:.2f}, Training Loss: {train_loss:.2f}")
+print(f"Validation Accuracy: {val_acc:.2f}, Validation Loss: {val_loss:.2f}")
+
+Training Accuracy: 0.77, Training Loss: 0.60
+Validation Accuracy: 0.64, Validation Loss: 0.89
+
+# Plot training and validation loss
+plt.figure(figsize=(12, 6))
+plt.plot(history.history['loss'], label='Training Loss', color='blue')
+plt.plot(history.history['val_loss'], label='Validation Loss', color='orange')
+plt.title('Training and Validation Loss')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.legend()
+plt.show()
+
+# Plot training and validation accuracy
+plt.figure(figsize=(12, 6))
+plt.plot(history.history['accuracy'], label='Training Accuracy', color='blue')
+plt.plot(history.history['val_accuracy'], label='Validation Accuracy', color='orange')
+plt.title('Training and Validation Accuracy')
+plt.xlabel('Epochs')
+plt.ylabel('Accuracy')
+plt.legend()
+plt.show()
+
+
+Colab paid products - Cancel contracts here
+
+
+X_train, X_val, y_train, y_val = train_test_split(
+    df['Text'], df['Encoded_Label'], test_size=0.2, random_state=42
+)
+
+X_train, X_val, y_train, y_val = train_test_split(
+    df['Text'], df['Encoded_Label'], test_size=0.2, random_state=42
+)
+
+Bag of Words representation
+
+
+
+models = [
+    ('Logistic Regression', LogisticRegression(max_iter=1000)),
+    ('Random Forest', RandomForestClassifier(n_estimators=100, random_state=42)),
+    ('XGBoost', XGBClassifier(
+        max_depth=6, 
+        n_estimators=100, 
+        learning_rate=0.1, 
+        verbosity=0,  # Suppress verbose messages in XGBoost
+        scale_pos_weight=1  # You can also include scale_pos_weight for imbalanced classes if needed
+    )),
+    ('LightGBM', LGBMClassifier(
+        max_depth=6, 
+        n_estimators=100, 
+        learning_rate=0.1, 
+        objective='multiclass', 
+        num_class=4,
+        verbose=-1,  # Suppress output messages in LightGBM
+        class_weight='balanced'  # Handle class imbalance in LightGBM
+    ))
+]
+
+
+models = [
+    ('Logistic Regression', LogisticRegression(max_iter=1000)),
+    ('Random Forest', RandomForestClassifier(n_estimators=100, random_state=42)),
+    ('XGBoost', XGBClassifier(
+        max_depth=6, 
+        n_estimators=100, 
+        learning_rate=0.1, 
+        verbosity=0,  # Suppress verbose messages in XGBoost
+        scale_pos_weight=1  # You can also include scale_pos_weight for imbalanced classes if needed
+    )),
+    ('LightGBM', LGBMClassifier(
+        max_depth=6, 
+        n_estimators=100, 
+        learning_rate=0.1, 
+        objective='multiclass', 
+        num_class=4,
+        verbose=-1,  # Suppress output messages in LightGBM
+        class_weight='balanced'  # Handle class imbalance in LightGBM
+    ))
+]
+
+reports = train_and_evaluate(models, X_train_bow, y_train, X_val_bow, y_val)
+
+
+/* 
+              precision    recall  f1-score   support
+
+           0       0.44      0.08      0.14      2696
+           1       0.44      0.57      0.49      4380
+           2       0.53      0.38      0.45      3605
+           3       0.39      0.56      0.46      4119
+
+    accuracy                           0.43     14800
+   macro avg       0.45      0.40      0.38     14800
+weighted avg       0.45      0.43      0.41     14800
+
+Training and evaluating: Random Forest
+Classification Report for Random Forest:
+
+              precision    recall  f1-score   support
+
+           0       0.97      0.73      0.83      2696
+           1       0.83      0.91      0.87      4380
+           2       0.88      0.84      0.86      3605
+           3       0.82      0.90      0.86      4119
+
+    accuracy                           0.86     14800
+   macro avg       0.88      0.85      0.86     14800
+weighted avg       0.86      0.86      0.86     14800
+
+Training and evaluating: XGBoost
+Classification Report for XGBoost:
+
+              precision    recall  f1-score   support
+
+           0       0.74      0.18      0.29      2696
+           1       0.52      0.66      0.58      4380
+           2       0.66      0.48      0.56      3605
+           3       0.47      0.69      0.56      4119
+
+    accuracy                           0.54     14800
+   macro avg       0.60      0.50      0.50     14800
+weighted avg       0.58      0.54      0.52     14800
+
+Training and evaluating: LightGBM
+
+/usr/local/lib/python3.11/dist-packages/sklearn/utils/deprecation.py:151: FutureWarning: 'force_all_finite' was renamed to 'ensure_all_finite' in 1.6 and will be removed in 1.8.
+  warnings.warn(
+/usr/local/lib/python3.11/dist-packages/sklearn/utils/deprecation.py:151: FutureWarning: 'force_all_finite' was renamed to 'ensure_all_finite' in 1.6 and will be removed in 1.8.
+  warnings.warn(
+
+Classification Report for LightGBM:
+
+              precision    recall  f1-score   support
+
+           0       0.43      0.51      0.47      2696
+           1       0.60      0.53      0.56      4380
+           2       0.64      0.49      0.56      3605
+           3       0.49      0.60      0.54      4119
+
+    accuracy                           0.53     14800
+   macro avg       0.54      0.53      0.53     14800
+weighted avg       0.55      0.53      0.54     14800
+
+
+*/
+
+
+Logistic Regression model:
+
+# lr_bow = LogisticRegression(max_iter=500)
+
+# lr_bow.fit(X_train_bow, y_train)
+# y_pred_bow_lr = lr_bow.predict(X_val_bow)
+
+Random Forest model:
+# rf_bow = RandomForestClassifier(n_estimators=100, random_state=42)
+# rf_bow.fit(X_train_bow, y_train)
+# y_pred_bow_rf = rf_bow.predict(X_val_bow)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
