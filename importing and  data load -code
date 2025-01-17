@@ -125,6 +125,30 @@ dtypes: int64(1), object(3)
 memory usage: 2.8+ MB
 
 
+df['Label'].value_counts()
+
+
+count
+Label 	
+Negative 	22358
+Positive 	20655
+Neutral 	18108
+Irrelevant 	12875
+
+dtype: int64
+
+
+
+sns.countplot(df, x="Label")
+plt.show();
+
+
+
+
+
+
+
+
 
 
 
